@@ -167,6 +167,15 @@
   margin-bottom: 16px;
 }
 
+.login-team {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
 .login-card h1 {
   font-size: 32px;
   font-weight: 800;

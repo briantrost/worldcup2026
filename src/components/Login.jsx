@@ -20,7 +20,8 @@ export default function Login({ onLogin }) {
     <div className="app">
       <div className="login-screen">
         <div className="login-card">
-          <div className="login-logo">🏆</div>
+          <div className="login-logo">⚽🏆</div>
+          <p className="login-team">IG Creators Analytics</p>
           <h1>World Cup Oracle</h1>
           <h2>2026</h2>
           <p className="login-subtitle">Predict. Compete. Brag.</p>
