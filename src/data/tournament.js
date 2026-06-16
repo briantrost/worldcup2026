@@ -1,4 +1,4 @@
-export const DEADLINE = new Date('2026-06-11T19:00:00Z') // June 11, 3:00 PM EST
+export const DEADLINE = new Date('2026-06-17T04:00:00Z') // June 17, 12:00 AM EDT (midnight tonight) — extended for late entrants
 
 export function isPastDeadline() {
   return Date.now() > DEADLINE.getTime()
