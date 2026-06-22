@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { subscribeToScores, getAllPredictions, getPreTournamentQuestions } from '../firebase'
+import { subscribeToScores, getAllPredictions, getPreTournamentQuestions, getManualGrades } from '../firebase'
 import { isPastDeadline, timeUntilDeadline } from '../data/tournament'
 import { ALL_PRE_TOURNAMENT_QUESTIONS, CATEGORIES } from '../data/questions'
 import { getFlag } from '../data/teams'
@@ -9,6 +9,7 @@ export default function Leaderboard({ currentUserId }) {
   const [allPredictions, setAllPredictions] = useState({})
   const [expandedUser, setExpandedUser] = useState(null)
   const [resolvedAnswers, setResolvedAnswers] = useState({})
+  const [manualGrades, setManualGrades] = useState({})
   const pastDeadline = isPastDeadline()
 
   useEffect(() => {
@@ -18,6 +19,7 @@ export default function Leaderboard({ currentUserId }) {
 
   useEffect(() => {
     getAllPredictions().then(setAllPredictions)
+    getManualGrades().then(setManualGrades)
     getPreTournamentQuestions().then(qs => {
       const answers = {}
       for (const [id, q] of Object.entries(qs || {})) {
@@ -102,7 +104,12 @@ export default function Leaderboard({ currentUserId }) {
               <span className="col-total">{player.totalScore} pts</span>
             </div>
             {expandedUser === player.id && (
-              <PicksDetail predictions={allPredictions[player.id]} resolvedAnswers={resolvedAnswers} />
+              <PicksDetail
+                userId={player.id}
+                predictions={allPredictions[player.id]}
+                resolvedAnswers={resolvedAnswers}
+                manualGrades={manualGrades}
+              />
             )}
           </div>
         ))}
@@ -111,7 +118,7 @@ export default function Leaderboard({ currentUserId }) {
   )
 }
 
-function PicksDetail({ predictions, resolvedAnswers }) {
+function PicksDetail({ userId, predictions, resolvedAnswers, manualGrades }) {
   if (!predictions?.preTournament) {
     return (
       <div className="picks-detail">
@@ -132,12 +139,20 @@ function PicksDetail({ predictions, resolvedAnswers }) {
             {questions.map(q => {
               const userPick = preds[q.id]
               if (userPick === undefined) return null
-              const actual = resolvedAnswers[q.id]
-              const isResolved = actual != null
-              const isCorrect = isResolved && String(userPick) === String(actual)
-              const isClose = isResolved && !isCorrect && q.type === 'exact-number' && (
-                Math.abs(Number(userPick) - Number(actual)) <= (q.tolerance || 3)
-              )
+
+              let isResolved, isCorrect, isClose = false, actual
+              if (q.freeText) {
+                const grade = manualGrades?.[q.id]?.[userId]
+                isResolved = grade != null
+                isCorrect = grade === true
+              } else {
+                actual = resolvedAnswers[q.id]
+                isResolved = actual != null
+                isCorrect = isResolved && String(userPick) === String(actual)
+                isClose = isResolved && !isCorrect && q.type === 'exact-number' && (
+                  Math.abs(Number(userPick) - Number(actual)) <= (q.tolerance || 3)
+                )
+              }
 
               const formatAnswer = (val) => {
                 if (q.type === 'group-winner' || q.type === 'pick-team') {
@@ -155,7 +170,7 @@ function PicksDetail({ predictions, resolvedAnswers }) {
                     <span className={`picks-answer ${isResolved ? (isCorrect ? 'correct' : isClose ? 'close' : 'wrong') : ''}`}>
                       {formatAnswer(userPick)}
                     </span>
-                    {isResolved && !isCorrect && (
+                    {isResolved && !isCorrect && actual != null && (
                       <span className="picks-actual">
                         → {formatAnswer(actual)}
                       </span>

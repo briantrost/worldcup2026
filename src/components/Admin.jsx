@@ -7,7 +7,10 @@ import {
   resolveQuestion,
   gradeAllPredictions,
   getAllUsers,
-  deleteUser
+  deleteUser,
+  getAllPredictions,
+  getManualGrades,
+  setManualGrade
 } from '../firebase'
 
 export default function Admin() {
@@ -15,27 +18,38 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState('results')
   const [savedAnswers, setSavedAnswers] = useState({})
   const [loading, setLoading] = useState(true)
-  const [gradedCount, setGradedCount] = useState(0)
   const [users, setUsers] = useState({})
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [predictions, setPredictions] = useState({})
+  const [manualGrades, setManualGrades] = useState({})
 
   useEffect(() => {
     loadSavedAnswers()
     getAllUsers().then(setUsers)
+    getAllPredictions().then(setPredictions)
+    getManualGrades().then(setManualGrades)
   }, [])
+
+  async function handleToggleManualGrade(questionId, userId, isCorrect) {
+    setManualGrades(prev => {
+      const next = { ...prev, [questionId]: { ...(prev[questionId] || {}) } }
+      if (isCorrect === null) delete next[questionId][userId]
+      else next[questionId][userId] = isCorrect
+      return next
+    })
+    await setManualGrade(questionId, userId, isCorrect)
+    await gradeAllPredictions()
+    setStatus('✓ Updated & graded')
+    setTimeout(() => setStatus(''), 1500)
+  }
 
   async function loadSavedAnswers() {
     const questions = await getPreTournamentQuestions()
     const answers = {}
-    let count = 0
     for (const [id, q] of Object.entries(questions || {})) {
-      if (q.answer != null) {
-        answers[id] = q.answer
-        count++
-      }
+      if (q.answer != null) answers[id] = q.answer
     }
     setSavedAnswers(answers)
-    setGradedCount(count)
     setLoading(false)
   }
 
@@ -55,10 +69,6 @@ export default function Admin() {
     setSavedAnswers(prev => ({ ...prev, [questionId]: answer }))
     await resolveQuestion(`preTournament/${questionId}`, answer)
     await gradeAllPredictions()
-    setGradedCount(prev => {
-      const wasAlreadySet = savedAnswers[questionId] != null
-      return wasAlreadySet ? prev : prev + 1
-    })
     setStatus(`✓ Saved & graded: ${questionId}`)
     setTimeout(() => setStatus(''), 2000)
   }
@@ -71,7 +81,6 @@ export default function Admin() {
     })
     await resolveQuestion(`preTournament/${questionId}`, null)
     await gradeAllPredictions()
-    setGradedCount(prev => prev - 1)
     setStatus(`Cleared: ${questionId}`)
     setTimeout(() => setStatus(''), 2000)
   }
@@ -79,6 +88,11 @@ export default function Admin() {
   if (loading) return <div className="loading">Loading admin...</div>
 
   const totalQuestions = ALL_PRE_TOURNAMENT_QUESTIONS.length
+  const gradedCount = ALL_PRE_TOURNAMENT_QUESTIONS.filter(q =>
+    q.freeText
+      ? Object.keys(manualGrades[q.id] || {}).length > 0
+      : savedAnswers[q.id] != null
+  ).length
 
   return (
     <div className="admin">
@@ -165,13 +179,24 @@ export default function Admin() {
               <section key={cat} className="admin-section">
                 <h3>{cat}</h3>
                 {questions.map(q => (
-                  <ResultRow
-                    key={q.id}
-                    question={q}
-                    savedAnswer={savedAnswers[q.id]}
-                    onSave={answer => handleSetAnswer(q.id, answer)}
-                    onClear={() => handleClearAnswer(q.id)}
-                  />
+                  q.freeText ? (
+                    <FreeTextResultRow
+                      key={q.id}
+                      question={q}
+                      users={users}
+                      predictions={predictions}
+                      grades={manualGrades[q.id] || {}}
+                      onToggle={(userId, isCorrect) => handleToggleManualGrade(q.id, userId, isCorrect)}
+                    />
+                  ) : (
+                    <ResultRow
+                      key={q.id}
+                      question={q}
+                      savedAnswer={savedAnswers[q.id]}
+                      onSave={answer => handleSetAnswer(q.id, answer)}
+                      onClear={() => handleClearAnswer(q.id)}
+                    />
+                  )
                 ))}
               </section>
             )
@@ -256,30 +281,67 @@ function ResultRow({ question, savedAnswer, onSave, onClear }) {
           </div>
         )}
 
-        {question.freeText && (
-          <div className="result-number">
-            <input
-              type="text"
-              value={draft || (savedAnswer ?? '')}
-              onChange={e => setDraft(e.target.value)}
-              placeholder="Player name"
-              className="result-num-input"
-              style={{ width: '200px' }}
-            />
-            <button
-              className="result-save-btn"
-              onClick={() => { onSave(draft || savedAnswer); setDraft('') }}
-              disabled={!draft && savedAnswer == null}
-            >
-              Save
-            </button>
-          </div>
-        )}
-
         {isResolved && (
           <button className="result-clear" onClick={onClear}>Clear</button>
         )}
       </div>
+    </div>
+  )
+}
+
+function FreeTextResultRow({ question, users, predictions, grades, onToggle }) {
+  const { id, text } = question
+
+  // Collect each player's response to this free-text question
+  const responses = Object.entries(predictions)
+    .map(([userId, preds]) => ({
+      userId,
+      name: users[userId]?.displayName || userId,
+      answer: preds?.preTournament?.[id]
+    }))
+    .filter(r => r.answer !== undefined && r.answer !== '')
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  const correctCount = responses.filter(r => grades[r.userId] === true).length
+
+  return (
+    <div className="result-row">
+      <div className="result-question">
+        <span className="result-q-text">{text}</span>
+        <span className="result-saved">{correctCount}/{responses.length} correct</span>
+      </div>
+
+      {responses.length === 0 ? (
+        <p className="admin-hint">No responses submitted yet.</p>
+      ) : (
+        <div className="freetext-list">
+          {responses.map(r => {
+            const verdict = grades[r.userId]
+            return (
+              <div key={r.userId} className="freetext-row">
+                <div className="freetext-info">
+                  <span className="freetext-name">{r.name}</span>
+                  <span className="freetext-answer">{r.answer}</span>
+                </div>
+                <div className="freetext-toggle">
+                  <button
+                    className={`freetext-btn correct ${verdict === true ? 'active' : ''}`}
+                    onClick={() => onToggle(r.userId, verdict === true ? null : true)}
+                  >
+                    ✓
+                  </button>
+                  <button
+                    className={`freetext-btn wrong ${verdict === false ? 'active' : ''}`}
+                    onClick={() => onToggle(r.userId, verdict === false ? null : false)}
+                  >
+                    ✗
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

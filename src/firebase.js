@@ -151,13 +151,29 @@ export async function saveTournamentConfig(config) {
   await set(ref(db, `oracle/config`), config)
 }
 
+// ─── Manual grades (per-player, for free-text questions) ───
+
+export async function getManualGrades() {
+  const snap = await get(ref(db, `oracle/manualGrades`))
+  return snap.exists() ? snap.val() : {}
+}
+
+export async function setManualGrade(questionId, userId, isCorrect) {
+  if (isCorrect === null) {
+    await remove(ref(db, `oracle/manualGrades/${questionId}/${userId}`))
+  } else {
+    await set(ref(db, `oracle/manualGrades/${questionId}/${userId}`), isCorrect)
+  }
+}
+
 // ─── Grading ───
 
 export async function gradeAllPredictions() {
-  const [questions, allPredictions, users] = await Promise.all([
+  const [questions, allPredictions, users, manualGrades] = await Promise.all([
     get(ref(db, `oracle/questions`)).then(s => s.val() || {}),
     get(ref(db, `oracle/predictions`)).then(s => s.val() || {}),
-    get(ref(db, `oracle/users`)).then(s => s.val() || {})
+    get(ref(db, `oracle/users`)).then(s => s.val() || {}),
+    get(ref(db, `oracle/manualGrades`)).then(s => s.val() || {})
   ])
 
   const updates = {}
@@ -170,10 +186,16 @@ export async function gradeAllPredictions() {
     if (questions.preTournament && userPreds.preTournament) {
       let preScore = 0
       for (const [qId, q] of Object.entries(questions.preTournament)) {
-        if (q.answer == null) continue
         const userAnswer = userPreds.preTournament[qId]
         if (userAnswer === undefined) continue
-        const pts = gradeAnswer(q, userAnswer)
+        let pts = 0
+        if (q.freeText) {
+          // Per-player manual grading — admin checks each response off
+          pts = manualGrades[qId]?.[userId] === true ? (q.points || 10) : 0
+        } else {
+          if (q.answer == null) continue
+          pts = gradeAnswer(q, userAnswer)
+        }
         preScore += pts
       }
       breakdown.preTournament = preScore

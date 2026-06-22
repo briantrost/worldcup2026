@@ -1191,6 +1191,80 @@
   padding: 4px 8px;
 }
 
+/* ─── Free-text Grading Checklist ─── */
+
+.freetext-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.freetext-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.freetext-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.freetext-name {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.freetext-answer {
+  font-size: 14px;
+  color: var(--text-bright);
+  font-weight: 700;
+}
+
+.freetext-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.freetext-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  transition: all 0.15s;
+}
+
+.freetext-btn.correct {
+  color: var(--green);
+}
+
+.freetext-btn.correct.active {
+  background: var(--green);
+  border-color: var(--green);
+  color: white;
+}
+
+.freetext-btn.wrong {
+  color: var(--red);
+}
+
+.freetext-btn.wrong.active {
+  background: var(--red);
+  border-color: var(--red);
+  color: white;
+}
+
 /* ─── Player Management ─── */
 
 .player-list {
