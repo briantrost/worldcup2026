@@ -141,7 +141,7 @@ function PicksDetail({ userId, predictions, resolvedAnswers, manualGrades }) {
               if (userPick === undefined) return null
 
               let isResolved, isCorrect, isClose = false, actual
-              if (q.freeText) {
+              if (q.freeText || q.manualGrade) {
                 const grade = manualGrades?.[q.id]?.[userId]
                 isResolved = grade != null
                 isCorrect = grade === true

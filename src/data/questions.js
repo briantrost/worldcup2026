@@ -71,6 +71,7 @@ export const PRE_TOURNAMENT_QUESTIONS = [
     text: 'Name a team that will NOT make it out of the group stage.',
     type: 'pick-team',
     options: ALL_TEAMS,
+    manualGrade: true,
     points: 10,
     category: 'Group Stage'
   },
@@ -89,6 +90,7 @@ export const PRE_TOURNAMENT_QUESTIONS = [
     subtitle: 'Excludes Pot 1 teams (hosts + top 9 ranked) and recent QF makers Croatia & Morocco.',
     type: 'pick-team',
     options: DARK_HORSE_TEAMS,
+    manualGrade: true,
     points: 30,
     category: 'Knockout Stage'
   },
@@ -96,7 +98,8 @@ export const PRE_TOURNAMENT_QUESTIONS = [
     id: 'host_best',
     text: 'Which host nation will go furthest? (USA, Mexico, Canada)',
     type: 'pick-one',
-    options: ['United States', 'Mexico', 'Canada'],
+    options: ['United States', 'Mexico', 'Canada', 'Tie (two or more level)'],
+    manualGrade: true,
     points: 10,
     category: 'Knockout Stage'
   },

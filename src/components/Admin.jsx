@@ -179,7 +179,7 @@ export default function Admin() {
               <section key={cat} className="admin-section">
                 <h3>{cat}</h3>
                 {questions.map(q => (
-                  q.freeText ? (
+                  (q.freeText || q.manualGrade) ? (
                     <FreeTextResultRow
                       key={q.id}
                       question={q}
@@ -290,9 +290,10 @@ function ResultRow({ question, savedAnswer, onSave, onClear }) {
 }
 
 function FreeTextResultRow({ question, users, predictions, grades, onToggle }) {
-  const { id, text } = question
+  const { id, text, type } = question
+  const isTeam = type === 'pick-team' || type === 'group-winner'
 
-  // Collect each player's response to this free-text question
+  // Collect each player's response to this question
   const responses = Object.entries(predictions)
     .map(([userId, preds]) => ({
       userId,
@@ -321,7 +322,7 @@ function FreeTextResultRow({ question, users, predictions, grades, onToggle }) {
               <div key={r.userId} className="freetext-row">
                 <div className="freetext-info">
                   <span className="freetext-name">{r.name}</span>
-                  <span className="freetext-answer">{r.answer}</span>
+                  <span className="freetext-answer">{isTeam ? `${getFlag(r.answer)} ${r.answer}` : r.answer}</span>
                 </div>
                 <div className="freetext-toggle">
                   <button

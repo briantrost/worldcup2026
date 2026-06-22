@@ -67,7 +67,15 @@ export function subscribeToQuestions(callback) {
 }
 
 export async function savePreTournamentQuestions(questions) {
-  await set(ref(db, `oracle/questions/preTournament`), questions)
+  // Preserve any already-set answers/resolvedAt when re-seeding question definitions
+  const existing = await get(ref(db, `oracle/questions/preTournament`)).then(s => s.val() || {})
+  const merged = {}
+  for (const [id, q] of Object.entries(questions)) {
+    merged[id] = { ...q }
+    if (existing[id]?.answer != null) merged[id].answer = existing[id].answer
+    if (existing[id]?.resolvedAt != null) merged[id].resolvedAt = existing[id].resolvedAt
+  }
+  await set(ref(db, `oracle/questions/preTournament`), merged)
 }
 
 export async function saveMatchDayQuestions(matchDayId, questions) {
@@ -189,7 +197,7 @@ export async function gradeAllPredictions() {
         const userAnswer = userPreds.preTournament[qId]
         if (userAnswer === undefined) continue
         let pts = 0
-        if (q.freeText) {
+        if (q.freeText || q.manualGrade) {
           // Per-player manual grading — admin checks each response off
           pts = manualGrades[qId]?.[userId] === true ? (q.points || 10) : 0
         } else {
