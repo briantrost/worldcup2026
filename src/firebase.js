@@ -247,7 +247,21 @@ function gradeAnswer(question, userAnswer) {
       return userAnswer === question.answer ? base : 0
 
     case 'exact-number': {
-      const diff = Math.abs(Number(userAnswer) - Number(question.answer))
+      const actual = Number(question.answer)
+      const guess = Number(userAnswer)
+      const diff = Math.abs(guess - actual)
+
+      // Percentage-based scoring ladder (bands sorted ascending by pct)
+      if (Array.isArray(question.scoreBands)) {
+        if (actual === 0) return guess === 0 ? question.scoreBands[0].points : 0
+        const pctOff = (diff / actual) * 100
+        const bands = [...question.scoreBands].sort((a, b) => a.pct - b.pct)
+        for (const band of bands) {
+          if (pctOff <= band.pct) return band.points
+        }
+        return 0
+      }
+
       const tol = question.tolerance || 3
       if (diff === 0) return base * 3
       if (diff <= Math.ceil(tol / 3)) return base * 2

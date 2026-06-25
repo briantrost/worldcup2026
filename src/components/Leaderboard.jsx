@@ -149,9 +149,15 @@ function PicksDetail({ userId, predictions, resolvedAnswers, manualGrades }) {
                 actual = resolvedAnswers[q.id]
                 isResolved = actual != null
                 isCorrect = isResolved && String(userPick) === String(actual)
-                isClose = isResolved && !isCorrect && q.type === 'exact-number' && (
-                  Math.abs(Number(userPick) - Number(actual)) <= (q.tolerance || 3)
-                )
+                if (isResolved && !isCorrect && q.type === 'exact-number') {
+                  const diff = Math.abs(Number(userPick) - Number(actual))
+                  if (Array.isArray(q.scoreBands)) {
+                    const maxPct = Math.max(...q.scoreBands.map(b => b.pct))
+                    isClose = Number(actual) !== 0 && (diff / Number(actual)) * 100 <= maxPct
+                  } else {
+                    isClose = diff <= (q.tolerance || 3)
+                  }
+                }
               }
 
               const formatAnswer = (val) => {

@@ -77,10 +77,16 @@ export const PRE_TOURNAMENT_QUESTIONS = [
   },
   {
     id: 'group_stage_goals',
-    text: 'How many total goals will be scored in the group stage? (within 10)',
+    text: 'How many total goals will be scored in the group stage?',
+    subtitle: 'Scored by accuracy: within 5% = 30 pts, 10% = 20, 15% = 10, 20% = 5, otherwise 0.',
     type: 'exact-number',
-    points: 10,
-    tolerance: 10,
+    points: 30,
+    scoreBands: [
+      { pct: 5, points: 30 },
+      { pct: 10, points: 20 },
+      { pct: 15, points: 10 },
+      { pct: 20, points: 5 }
+    ],
     category: 'Group Stage'
   },
   // ─── Knockout Stage ───
