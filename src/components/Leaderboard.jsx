@@ -145,7 +145,7 @@ function PicksDetail({ userId, predictions, resolvedAnswers, manualGrades }) {
               const actual = isManual ? undefined : resolvedAnswers[q.id]
               const isResolved = isManual ? grade != null : actual != null
 
-              const earned = isResolved ? scoreAnswer(q, userPick, grade) : 0
+              const earned = isResolved ? scoreAnswer({ ...q, answer: actual }, userPick, grade) : 0
               const maxPts = maxPointsFor(q)
               const tier = !isResolved ? '' : earned === 0 ? 'wrong' : earned >= maxPts ? 'correct' : 'close'
 
