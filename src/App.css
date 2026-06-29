@@ -1638,6 +1638,19 @@
 .picks-row.close .picks-verdict { color: var(--gold); }
 .picks-row.wrong .picks-verdict { color: var(--red); }
 
+.picks-points {
+  font-size: 12px;
+  font-weight: 800;
+  min-width: 38px;
+  text-align: right;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.picks-points.correct { color: var(--green); background: rgba(22, 163, 74, 0.12); }
+.picks-points.close   { color: var(--gold);  background: rgba(245, 158, 11, 0.14); }
+.picks-points.wrong   { color: var(--text-dim); background: rgba(0,0,0,0.05); }
+
 /* ─── Responsive ─── */
 
 @media (max-width: 600px) {

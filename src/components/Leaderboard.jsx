@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { subscribeToScores, getAllPredictions, getPreTournamentQuestions, getManualGrades } from '../firebase'
+import { subscribeToScores, getAllPredictions, getPreTournamentQuestions, getManualGrades, scoreAnswer, maxPointsFor } from '../firebase'
 import { isPastDeadline, timeUntilDeadline } from '../data/tournament'
 import { ALL_PRE_TOURNAMENT_QUESTIONS, CATEGORIES } from '../data/questions'
 import { getFlag } from '../data/teams'
@@ -140,25 +140,14 @@ function PicksDetail({ userId, predictions, resolvedAnswers, manualGrades }) {
               const userPick = preds[q.id]
               if (userPick === undefined) return null
 
-              let isResolved, isCorrect, isClose = false, actual
-              if (q.freeText || q.manualGrade) {
-                const grade = manualGrades?.[q.id]?.[userId]
-                isResolved = grade != null
-                isCorrect = grade === true
-              } else {
-                actual = resolvedAnswers[q.id]
-                isResolved = actual != null
-                isCorrect = isResolved && String(userPick) === String(actual)
-                if (isResolved && !isCorrect && q.type === 'exact-number') {
-                  const diff = Math.abs(Number(userPick) - Number(actual))
-                  if (Array.isArray(q.scoreBands)) {
-                    const maxPct = Math.max(...q.scoreBands.map(b => b.pct))
-                    isClose = Number(actual) !== 0 && (diff / Number(actual)) * 100 <= maxPct
-                  } else {
-                    isClose = diff <= (q.tolerance || 3)
-                  }
-                }
-              }
+              const isManual = q.freeText || q.manualGrade
+              const grade = manualGrades?.[q.id]?.[userId]
+              const actual = isManual ? undefined : resolvedAnswers[q.id]
+              const isResolved = isManual ? grade != null : actual != null
+
+              const earned = isResolved ? scoreAnswer(q, userPick, grade) : 0
+              const maxPts = maxPointsFor(q)
+              const tier = !isResolved ? '' : earned === 0 ? 'wrong' : earned >= maxPts ? 'correct' : 'close'
 
               const formatAnswer = (val) => {
                 if (q.type === 'group-winner' || q.type === 'pick-team') {
@@ -168,23 +157,21 @@ function PicksDetail({ userId, predictions, resolvedAnswers, manualGrades }) {
               }
 
               return (
-                <div key={q.id} className={`picks-row ${isResolved ? (isCorrect ? 'correct' : isClose ? 'close' : 'wrong') : ''}`}>
+                <div key={q.id} className={`picks-row ${tier}`}>
                   <span className="picks-question">
                     {q.type === 'group-winner' ? `Group ${q.group}` : q.text}
                   </span>
                   <span className="picks-answer-group">
-                    <span className={`picks-answer ${isResolved ? (isCorrect ? 'correct' : isClose ? 'close' : 'wrong') : ''}`}>
+                    <span className={`picks-answer ${tier}`}>
                       {formatAnswer(userPick)}
                     </span>
-                    {isResolved && !isCorrect && actual != null && (
+                    {isResolved && earned < maxPts && actual != null && (
                       <span className="picks-actual">
                         → {formatAnswer(actual)}
                       </span>
                     )}
                     {isResolved && (
-                      <span className="picks-verdict">
-                        {isCorrect ? '✓' : isClose ? '~' : '✗'}
-                      </span>
+                      <span className={`picks-points ${tier}`}>+{earned}</span>
                     )}
                   </span>
                 </div>

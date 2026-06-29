@@ -196,15 +196,7 @@ export async function gradeAllPredictions() {
       for (const [qId, q] of Object.entries(questions.preTournament)) {
         const userAnswer = userPreds.preTournament[qId]
         if (userAnswer === undefined) continue
-        let pts = 0
-        if (q.freeText || q.manualGrade) {
-          // Per-player manual grading — admin checks each response off
-          pts = manualGrades[qId]?.[userId] === true ? (q.points || 10) : 0
-        } else {
-          if (q.answer == null) continue
-          pts = gradeAnswer(q, userAnswer)
-        }
-        preScore += pts
+        preScore += scoreAnswer(q, userAnswer, manualGrades[qId]?.[userId])
       }
       breakdown.preTournament = preScore
       total += preScore
@@ -216,11 +208,9 @@ export async function gradeAllPredictions() {
       for (const [dayId, dayQs] of Object.entries(questions.matchDay)) {
         if (!userPreds[`matchDay_${dayId}`]) continue
         for (const [qId, q] of Object.entries(dayQs)) {
-          if (q.answer == null) continue
           const userAnswer = userPreds[`matchDay_${dayId}`][qId]
           if (userAnswer === undefined) continue
-          const pts = gradeAnswer(q, userAnswer)
-          mdScore += pts
+          mdScore += scoreAnswer(q, userAnswer, manualGrades[qId]?.[userId])
         }
       }
       breakdown.matchDay = mdScore
@@ -236,8 +226,17 @@ export async function gradeAllPredictions() {
   }
 }
 
-function gradeAnswer(question, userAnswer) {
+// Single source of truth for scoring. Returns points earned for one answer.
+// manualGradeValue is the admin's per-player verdict (true/false/undefined) for
+// freeText / manualGrade questions.
+export function scoreAnswer(question, userAnswer, manualGradeValue) {
   const base = question.points || 10
+
+  if (question.freeText || question.manualGrade) {
+    return manualGradeValue === true ? base : 0
+  }
+
+  if (question.answer == null) return 0
 
   switch (question.type) {
     case 'pick-one':
@@ -272,4 +271,16 @@ function gradeAnswer(question, userAnswer) {
     default:
       return userAnswer === question.answer ? base : 0
   }
+}
+
+// Maximum points a question can award — used to label full vs partial credit.
+export function maxPointsFor(question) {
+  const base = question.points || 10
+  if (question.type === 'exact-number') {
+    if (Array.isArray(question.scoreBands)) {
+      return Math.max(...question.scoreBands.map(b => b.points))
+    }
+    return base * 3
+  }
+  return base
 }
